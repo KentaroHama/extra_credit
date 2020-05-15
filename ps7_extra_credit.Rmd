@@ -1,0 +1,59 @@
+---
+title: "30535 Applied Problem Set 2 - Extra Credit"
+author: "Ziqi Zhou, Kentaro Hama"
+date: "05/15/2020"
+output:
+  html_document:
+    number_sections: no
+  pdf_document: default
+---
+
+```{r message=FALSE, warning=FALSE}
+library(tidyverse)
+rm(list = ls())
+```
+
+# Creating Dataset for Extra Credit
+```{r, message = FALSE, warning = FALSE}
+tickets_1pct <- read_csv("C:/Users/kenta/Downloads/parking_tickets_one_percent.csv")
+chi_zips <- read_csv("C:/Users/kenta/Downloads/chi_zips.csv")
+
+
+tickets_1pct_three_month_chicago <- 
+  tickets_1pct %>%
+  mutate(zip_5digits = as.numeric(substr(zipcode, 1, 5))) %>%
+  inner_join(chi_zips, by = c("zip_5digits" = "ZIP")) %>%
+  separate(issue_date, into = c("year", "month", "daytime"), sep = "-") %>%
+  separate(daytime, into = c("day", "time"), sep = " ")  %>%
+  unite(date, c(year, month, day), sep = "-", remove = FALSE) %>%
+  mutate(date = as.Date(date),
+         bankruptcy = ifelse(ticket_queue == "Bankruptcy", 1, 0)) %>%
+  filter(year == 2011 & month %in% c("11", "12") |
+         year == 2012 & month %in% c("01", "02", "03", "04", "05"))
+```
+
+# Analysis
+To examine the relationship between changes in enforcement before and after price changes and the amount of overdue payments, we narrowed the sample to three months of data before and after the month of enforcement. As a result, unpaid amounts have jumped since Feb. 25, when fines for sticker violations were increased. Since prices have gone up, it is not surprising that overdue payments have also gone up, but what is noteworthy is that the overall unpaid amount has not gone up because of the price increase. Rather, it seems that the amount of debt owed by those who were originally delinquent has increased even more. Isn't the increase in fines piling up to further corner the poor and widen the gap between rich and poor? Incidentally, there was no clear change in the bankruptcy rate before or after the increase in fines.
+```{r}
+ggplot(tickets_1pct_three_month_chicago, aes(date, current_amount_due)) +
+  geom_hex() +
+  geom_vline(xintercept = tickets_1pct_three_month_chicago$date[3802], 
+             linetype = "dashed") +
+  scale_x_date(date_breaks = "1 month", date_labels = "'%y-%m") +
+  labs(x = "", 
+       y = "Overdue Payments", 
+       title = "Increase in Unpaid Amounts due to Increased Fine")
+
+
+tickets_1pct_three_month_chicago %>%
+  group_by(date) %>%
+  summarise(bankruptcy = mean(bankruptcy)) %>%
+  ggplot(aes(date, bankruptcy)) +
+  geom_point() +
+  geom_vline(xintercept = tickets_1pct_three_month_chicago$date[3802], 
+             linetype = "dashed") +
+  scale_x_date(date_breaks = "1 month", date_labels = "'%y-%m") +
+  labs(x = "", y = "Bankruptcy Rate")
+```
+
+
